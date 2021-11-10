@@ -16,6 +16,7 @@ PRDT_LOYALTY = "prdt_loyalty"
 PRDT_PRICE = "prdt_price"
 PRDT_PRICE_ELASTICITY = "prdt_price_elasticity"
 PRDT_VOLUME = "prdt_volume"
+PRDT_COST = 'prdt_cost'
 
 PRODUCTS = "products"
 CATEGORY_NAME = "category_name"
@@ -27,9 +28,9 @@ EXCH_GRAPH = "exch_graph"
 class ProductGenerator:
     def __init__(
         self,
-        n_category: int = 5,
-        cateogry_size: int = 10,
-        consumption_rate_limit: float = 0.1,
+        n_category: int = 2,
+        cateogry_size: int = 3,
+        consumption_rate_limit: float = 20.0,
         global_trend_limit: float = 0.1,
         seasonal_trend_limit: float = 0.1,
         n_max_complementory: int = 1,
@@ -64,7 +65,7 @@ class ProductGenerator:
 
             _cat = {
                 CATEGORY_NAME: f"CAT_{str(hash(idx))}",
-                PRODUCTS: [self._random_prdt(jdx) for jdx in range(self.cateogry_size)],
+                PRODUCTS: [self._random_prdt(jdx, suffix = f"{idx}") for jdx in range(self.cateogry_size)],
                 GLOBAL_TREND: random.uniform(
                     -self.global_trend_limit, self.global_trend_limit
                 ),
@@ -75,9 +76,10 @@ class ProductGenerator:
                     for _ in range(4)
                 ],
                 CONSUMPTION_RATE: random.uniform(
-                    -self.consumption_rate_limit, self.consumption_rate_limit
+                    0, self.consumption_rate_limit
                 ),
             }
+
             self.cfgs[CATEGORIES].append(_cat)
             self.cfgs[NUM_PRODUCTS] += self.cateogry_size
 
@@ -90,20 +92,32 @@ class ProductGenerator:
                 else:
                     self.cfgs[EXCH_GRAPH].append((idx, _rand))
 
-    def _random_prdt(self, idx: int):
-        _prdt = {
-            PRDT_ID: f"PRDT_{str(hash(idx))}",
-            PRDT_TREND: random.uniform(-self.prdt_trend_limit, self.prdt_trend_limit),
-            PRDT_LOYALTY: random.uniform(0, self.prdt_loyalty_limit),
-            PRDT_PRICE: random.uniform(-self.prdt_price_limit, self.prdt_price_limit),
-            PRDT_PRICE_ELASTICITY: random.uniform(
-                -self.prdt_elasticity_limit, self.prdt_elasticity_limit
-            ),
-        }
-        _vol = _prdt[PRDT_PRICE] + random.uniform(
+    def _random_prdt(self, idx: int, suffix : str = ""):
+
+        _price = random.uniform(-self.prdt_price_limit, self.prdt_price_limit)
+        _vol =  _price + random.uniform(
             -self.prdt_volume_price_noise, self.prdt_volume_price_noise
         )
-        _prdt[PRDT_VOLUME] = math.exp(_vol)
+        price = math.exp(_price)
+        vol = math.exp(_vol)
+
+        _prdt = {
+            PRDT_ID: f"PRDT_{str(hash(idx))}_{suffix}",
+            PRDT_TREND: random.uniform(-self.prdt_trend_limit, self.prdt_trend_limit),
+            PRDT_LOYALTY: random.uniform(0, self.prdt_loyalty_limit),
+            PRDT_PRICE: price,
+            PRDT_COST : price * random.uniform(0.5, 0.9),
+            PRDT_VOLUME : vol,
+            PRDT_PRICE_ELASTICITY: random.uniform(
+                0, self.prdt_elasticity_limit
+            ),
+        }
 
         return _prdt
 
+
+if __name__ == "__main__":
+    _pg = ProductGenerator()
+    print(_pg.cfgs)
+    import json
+    json.dump(_pg.cfgs, open("prdt_cfg.json", "w"))
